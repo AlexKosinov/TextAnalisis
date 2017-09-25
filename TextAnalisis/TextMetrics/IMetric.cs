@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace TextAnalisis
+﻿namespace TextAnalisis.TextMetrics
 {
-    interface IMetric
+    public interface IMetric
     {
         // Получить метрику
-        string DoMetric();
+        void DoMetric(string text);
+
+        string GetStringMetric();
     }
 }
