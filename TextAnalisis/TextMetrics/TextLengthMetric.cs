@@ -1,5 +1,8 @@
 ﻿namespace TextAnalisis.TextMetrics
 {
+    /// <summary>
+    /// Метрика для подсчета длины текста.
+    /// </summary>
     public class TextLengthMetric : IMetric
     {
         int symbolCount;

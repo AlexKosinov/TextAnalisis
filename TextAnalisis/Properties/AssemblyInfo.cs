@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // Управление общими сведениями о сборке осуществляется с помощью 
 // набора атрибутов. Измените значения этих атрибутов, чтобы изменить сведения,
 // связанные со сборкой.
-[assembly: AssemblyTitle("TextAnalisis")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Анализ текста")]
+[assembly: AssemblyDescription("Тестовое задание. Программа для анализа текста определенными метриками.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("MICROSOFT")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("TextAnalisis")]
-[assembly: AssemblyCopyright("Copyright © MICROSOFT 2017")]
+[assembly: AssemblyCopyright("Copyright © AlexKosinov 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

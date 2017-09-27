@@ -2,6 +2,9 @@
 
 namespace TextAnalisis.TextMetrics
 {
+    /// <summary>
+    /// Метрика для подсчета количества строк в тексте.
+    /// </summary>
     public class LineCountMetric : IMetric
     {
         int lineCount;

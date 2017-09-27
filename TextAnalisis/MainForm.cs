@@ -1,26 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using TextAnalisis.TextMetrics;
+using TextAnalisis.Core;
+using System.Runtime.InteropServices;
 
 namespace TextAnalisis
 {
     public partial class MainForm : Form
     {
-        TextAnaliser ctrl;
+        TextAnalisisWorker textAnaliser;       
 
         public MainForm()
         {
             InitializeComponent();
 
-            
+            textAnaliser = new TextAnalisisWorker();
+            textAnaliser.OnBeginAnalis += TextAnaliser_OnBeginAnalis;
+            textAnaliser.OnCompleted += TextAnaliser_OnCompleted;
+
+            TextBoxWatermarkExtensionMethod.SetWatermark(tstbSearch.TextBox, "Поиск...");
+        }
+
+        private void TextAnaliser_OnBeginAnalis(object obj)
+        {
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripProgressBar1.MarqueeAnimationSpeed = 20;
+        }
+
+        private void TextAnaliser_OnCompleted(object obj)
+        {
+            rtbMetrics.Text += ((TextAnalisisWorker)obj).MetricResults;
+
+            toolStripProgressBar1.Style = ProgressBarStyle.Continuous;
+            toolStripProgressBar1.MarqueeAnimationSpeed = 0;
         }
 
         private void выходToolStripMenuItem_Click(object sender, EventArgs e)
@@ -31,65 +44,74 @@ namespace TextAnalisis
         private void toolStripButton1_Click(object sender, EventArgs e)
         {
             OpenFile();
-            /* string text = String.Empty;
-            using (StreamReader sr = new StreamReader(@"e:\ExtremelyLargeImage.data", Encoding.Default))
-            {
-                text = sr.ReadToEnd();
-            }
-
-            richTextBox1.Text = text;*/
         }
 
         private void OpenFile()
         {
-            openFileDialog1.InitialDirectory = "c:\\";
-            openFileDialog1.Filter = "txt files (*.txt)|*.txt|All files (*.*)|*.*";
-            openFileDialog1.FilterIndex = 2;
-            openFileDialog1.RestoreDirectory = true;
+            openFileDialog.InitialDirectory = "c:\\";
+            openFileDialog.Filter = "txt files (*.txt)|*.txt";
+            openFileDialog.FilterIndex = 1;
+            openFileDialog.RestoreDirectory = true;
 
-            if (openFileDialog1.ShowDialog() != DialogResult.OK)
+            if (openFileDialog.ShowDialog() != DialogResult.OK)
             {
                 return;
             }
 
             try
             {
-                
-                ctrl = new TextAnaliser(openFileDialog1.FileName);
-                this.Text = "Анализ текста - " + openFileDialog1.SafeFileName;
+                OpenAndShowFile(openFileDialog.FileName);
 
-                long offset = 0x00000000; // 0
-                long length = 0x00020000; // 128 kilobytes            
-
-                ReadFile(offset, length);
+                this.Text = "Анализ текста - " + openFileDialog.SafeFileName;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error: Could not read file from disk. Original error: " + ex.Message);
+                MessageBox.Show("Ошибка: Невозможно прочитать файл с диска. Подробнее: " + ex.Message);
             }
-           
-            GetMetrics();
         }
 
-        private void GetMetrics()
+        private void OpenAndShowFile(string fileName)
         {
-            richTextBox2.Clear();
+            if (textAnaliser.File != null)
+            {
+                CloseFile();
+            }
 
-            IMetric textLength = new TextLengthMetric();
-            
-            richTextBox2.Text += ctrl.GetMetric(textLength) + "\n";
+            textAnaliser.Settings = new TextFileSettings(fileName);
 
-            IMetric lineCount = new LineCountMetric();
+            GetDefaultMetrics();
 
-            richTextBox2.Text += ctrl.GetMetric(lineCount) + "\n";
+            // Отображение первого блока текста
+            long offset = 0x00000000; // 0
+            long length = 0x00020000; // 128 kilobytes
+
+            GetTextBlock(offset, length);
         }
 
-        private void ReadFile(long offset, long length)
+        private void GetDefaultMetrics()
+        {
+            rtbMetrics.Clear();
+
+            if (textAnaliser.File == null)
+                return;
+
+            // Необходимо добавить требуемые метрики
+            textAnaliser.Metrics = new List<IMetric>()
+                {
+                    new TextLengthMetric(),
+                    new SymbolWithoutSpacesMetric(),
+                    new LineCountMetric()
+                };
+
+            textAnaliser.Start();
+        }
+
+        private void GetTextBlock(long offset, long length)
         {
             try
             {
-                richTextBox1.Clear();
-                richTextBox1.Text = ctrl.ReadFile(offset, length);
+                rtbText.Clear();
+                rtbText.Text = textAnaliser.File.ReadTextBlock(offset, length);
             }
             catch (Exception ex)
             {
@@ -102,15 +124,66 @@ namespace TextAnalisis
             OpenFile();
         }
 
-        private void создатьToolStripMenuItem_Click(object sender, EventArgs e)
+        private void оПрограммеToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using (StreamWriter sw = new StreamWriter(@"e:\ExtremelyLargeImage.data", true, Encoding.Default))
+            AboutBox aboutBox = new AboutBox();
+            aboutBox.Show();
+        }
+
+        private void закрытьToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CloseFile();
+        }
+
+        private void CloseFile()
+        {
+            textAnaliser.Abort();
+            rtbText.Clear();
+            rtbMetrics.Clear();
+            this.Text = "Анализ текста";
+        }
+
+        private void toolStripButton2_Click(object sender, EventArgs e)
+        {
+            CloseFile();
+        }
+
+        private void toolStripTextBox1_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Return)
             {
-                for (int i = 0; i < 134217728; i++)
+                if (textAnaliser.File == null)
+                    return;
+
+                var textMatches = new TextMatchesCountMetric();
+                textMatches.Pattern = tstbSearch.Text;
+
+                textAnaliser.Metrics = new List<IMetric>()
                 {
-                    sw.Write('k');
-                }
-            } 
+                    textMatches
+                };
+
+                textAnaliser.Start();
+            }
+        }
+
+        private void pbRefresh_Click(object sender, EventArgs e)
+        {
+            GetDefaultMetrics();
+        }
+    }
+
+    public static class TextBoxWatermarkExtensionMethod
+    {
+        private const uint ECM_FIRST = 0x1500;
+        private const uint EM_SETCUEBANNER = ECM_FIRST + 1;
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = false)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, uint wParam, [MarshalAs(UnmanagedType.LPWStr)] string lParam);
+
+        public static void SetWatermark(this TextBox textBox, string watermarkText)
+        {
+            SendMessage(textBox.Handle, EM_SETCUEBANNER, 0, watermarkText);
         }
     }
 }
